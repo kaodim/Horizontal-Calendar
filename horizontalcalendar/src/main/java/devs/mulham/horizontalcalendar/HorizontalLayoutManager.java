@@ -17,11 +17,24 @@ public class HorizontalLayoutManager extends LinearLayoutManager {
     public static final float SPEED_NORMAL = 40f;
     public static final float SPEED_SLOW = 125f;
 
+    private boolean isScrollEnabled = true;
+
     float smoothScrollSpeed = SPEED_NORMAL;
 
     HorizontalLayoutManager(Context context, boolean reverseLayout) {
         super(context, HORIZONTAL, reverseLayout);
     }
+
+    public void setScrollEnabled(boolean flag) {
+        this.isScrollEnabled = flag;
+    }
+
+    @Override
+    public boolean canScrollHorizontally() {
+        //Similarly you can customize "canScrollHorizontally()" for managing horizontal scroll
+        return isScrollEnabled && super.canScrollHorizontally();
+    }
+
 
     @Override
     public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {

@@ -4,8 +4,10 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -20,6 +22,9 @@ import devs.mulham.horizontalcalendar.utils.HorizontalCalendarListener;
 import devs.mulham.horizontalcalendar.utils.HorizontalCalendarPredicate;
 import devs.mulham.horizontalcalendar.utils.HorizontalSnapHelper;
 import devs.mulham.horizontalcalendar.utils.Utils;
+import devs.mulham.horizontalcalendar.helpers.OnSwipeTouchListener;
+
+import static android.support.v7.widget.RecyclerView.SCROLL_STATE_IDLE;
 
 
 /**
@@ -44,6 +49,10 @@ public final class HorizontalCalendar {
 
     //Store today's position in adpater
     public int positionOfToday;
+    private int tempCount = 0;
+
+    private boolean executed = false;
+
     public String weekDay;
 
     //store position of last selected adapter position
@@ -93,8 +102,13 @@ public final class HorizontalCalendar {
         mCalendarAdapter = new DaysAdapter(this, startDate, endDate, disablePredicate);
         calendarView.setAdapter(mCalendarAdapter);
         calendarView.setLayoutManager(new HorizontalLayoutManager(calendarView.getContext(), false));
+//        calendarView.getLayoutManager().setScrollEnabled(false);
+//        calendarView.getLayoutManager().canScrollHorizontally();
+
         //uncomment for listen to scroll event
-//        calendarView.addOnScrollListener(new HorizontalCalendarScrollListener());
+        calendarView.addOnScrollListener(new HorizontalCalendarScrollListener());
+
+//        calenderViewOnSwipeListener();
 
         SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
         weekDay = dayFormat.format(defaultSelectedDate.getTime());
@@ -120,6 +134,20 @@ public final class HorizontalCalendar {
     public void setCalendarListener(HorizontalCalendarListener calendarListener) {
         this.calendarListener = calendarListener;
     }
+
+//
+//    private void calenderViewOnSwipeListener(){
+//        calendarView.setOnTouchListener(new OnSwipeTouchListener(getContext()) {
+//            public void onSwipeRight() {
+//                scrollToNextPreviousWeekdayPosition(lastSelectedPosition+7);
+//                Toast.makeText(getContext(), "right", Toast.LENGTH_SHORT).show();
+//            }
+//            public void onSwipeLeft() {
+//                scrollToNextPreviousWeekdayPosition(lastSelectedPosition-7);
+//                Toast.makeText(getContext(), "left", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+//    }
 
     /**
      * Select today date and center the Horizontal Calendar to this date
@@ -180,9 +208,14 @@ public final class HorizontalCalendar {
      *
      */
     public void goNextDay(Calendar date) {
-        date.add(date.DATE,1);
         int datePosition = positionOfDate(date);
-        scrollToPositionWithNoAnimation(datePosition);
+        if(getShiftCellsForWeekDay(datePosition)==0){ //if saturday
+            moveToWeekFirstOrLastDay(datePosition +1);
+        }else{
+            date.add(date.DATE,1);
+            datePosition = positionOfDate(date);
+            scrollToPositionWithNoAnimation(datePosition);
+        }
     }
 
     /**
@@ -192,9 +225,14 @@ public final class HorizontalCalendar {
      *
      */
     public void goPreviousDay(Calendar date) {
-        date.add(date.DATE,-1);
         int datePosition = positionOfDate(date);
-        scrollToPositionWithNoAnimation(datePosition);
+        if(getShiftCellsForWeekDay(datePosition)== 6){ //if Sunday
+            moveToWeekFirstOrLastDay(datePosition -1);
+        }else{
+            date.add(date.DATE,-1);
+            datePosition = positionOfDate(date);
+            scrollToPositionWithNoAnimation(datePosition);
+        }
     }
 
     /**
@@ -311,12 +349,101 @@ public final class HorizontalCalendar {
 
                 //when scroll to left on weekly bar
                 if(position > calendarView.getPositionOfCenterItem())
-                    relativePosition = position + getShiftCellsForWeekDay();
+                    relativePosition = position + getShiftCellsTodayWeekDay();
                     //when scroll to right on weekly bar
                 else if(position < calendarView.getPositionOfCenterItem())
                     // -6 as cell position start with 0
-                    relativePosition = position + getShiftCellsForWeekDay() - 6;
+                    relativePosition = position + getShiftCellsTodayWeekDay() - 6;
 
+
+                //update day adapter layout in weekbar
+                final int oldSelectedItem = lastSelectedPosition;
+                calendarView.scrollToPosition(relativePosition);
+                calendarView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final int newSelectedItem = position;
+                        //refresh to update background colors
+                        refreshItemsSelector(newSelectedItem, oldSelectedItem);
+                        lastSelectedPosition = position;
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Scroll Horizontal Calendar to today position and select today date.
+     *
+     * @param position The position to center the calendar to!
+     */
+    public void scrollToNextPreviousWeekdayPosition(final int position) {
+        if (position != -1) {
+            if(lastSelectedPosition != -1){
+
+                //call onDateSelected listener to update view
+                if (calendarListener != null) {
+                    calendarListener.onDateClicked(getDateAt(position), position);
+                }
+
+                int relativePosition = position;
+
+                //when scroll to left on weekly bar
+                if(position > calendarView.getPositionOfCenterItem()) {
+                    relativePosition = position + getShiftCellsForWeekDay(position);
+                    //when scroll to right on weekly bar
+                }else if(position < calendarView.getPositionOfCenterItem()) {
+                    // -6 as cell position start with 0
+                    relativePosition = position + getShiftCellsForWeekDay(position) - 6;
+                }
+
+                //update day adapter layout in weekbar
+                final int oldSelectedItem = lastSelectedPosition;
+                calendarView.scrollToPosition(relativePosition);
+                calendarView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final int newSelectedItem = position;
+                        //refresh to update background colors
+                        refreshItemsSelector(newSelectedItem, oldSelectedItem);
+                        lastSelectedPosition = position;
+
+                    }
+                });
+
+
+//                executed = false;
+            }
+//            executed = false;
+        }
+    }
+
+
+    /**
+     * Scroll Horizontal Calendar to today position and select today date.
+     *
+     * @param position The position to center the calendar to!
+     */
+    public void moveToWeekFirstOrLastDay(final int position) {
+        if (position != -1) {
+
+
+            if(lastSelectedPosition != -1){
+                //call onDateSelected listener to update view
+                if (calendarListener != null) {
+                    calendarListener.onDateSelected(getDateAt(position), position);
+                }
+
+                int relativePosition = position;
+
+                //when scroll to left on weekly bar
+                if(position > calendarView.getPositionOfCenterItem()) {
+                    relativePosition = position + getShiftCellsForWeekDay(position);
+                    //when scroll to right on weekly bar
+                }else if(position < calendarView.getPositionOfCenterItem()) {
+                    // -6 as cell position start with 0
+                    relativePosition = position + getShiftCellsForWeekDay(position) - 6;
+                }
 
                 //update day adapter layout in weekbar
                 final int oldSelectedItem = lastSelectedPosition;
@@ -477,9 +604,20 @@ public final class HorizontalCalendar {
         return numberOfDatesOnScreen / 2;
     }
 
-    public int getShiftCellsForWeekDay() {
+    public int getShiftCellsTodayWeekDay() {
+        return getWeekDayNumber(weekDay);
+    }
+
+
+    public int getShiftCellsForWeekDay(int position) {
+        SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
+        String positionWeekDay = dayFormat.format(getDateAt(position).getTime());
+        return getWeekDayNumber(positionWeekDay);
+    }
+
+    public int getWeekDayNumber(String weekday){
         int shift = 0;
-        switch(weekDay){
+        switch(weekday){
             case "Sunday":
                 shift = 6;
                 break;
@@ -540,7 +678,7 @@ public final class HorizontalCalendar {
             position = Utils.daysBetween(startDate, date);
         }
 
-        final int shiftCells = getShiftCellsForWeekDay();
+        final int shiftCells = getShiftCellsTodayWeekDay();
         return position + shiftCells;
     }
 
@@ -655,30 +793,70 @@ public final class HorizontalCalendar {
         }
     };
 
-    //uncomment for listen to scroll event
-//    private class HorizontalCalendarScrollListener extends RecyclerView.OnScrollListener {
-//
-//        int lastSelectedItem = -1;
+//    //uncomment for listen to scroll event
+    private class HorizontalCalendarScrollListener extends RecyclerView.OnScrollListener {
+
+        int lastSelectedItem = lastSelectedPosition;
+        int firstVisibleItem, visibleItemCount, totalItemCount;
+
 //        final Runnable selectedItemRefresher = new SelectedItemRefresher();
-//
-//        HorizontalCalendarScrollListener() {
-//        }
-//
-//        @Override
-//        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-//            //On Scroll, agenda is refresh to update background colors
+
+        HorizontalCalendarScrollListener() {
+        }
+
+    @Override
+    public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+        switch (newState) {
+            case RecyclerView.SCROLL_STATE_IDLE:
+                executed = false;
+                System.out.println("The RecyclerView is not scrolling");
+                break;
+            case RecyclerView.SCROLL_STATE_DRAGGING:
+                System.out.println("Scrolling now");
+                break;
+            case RecyclerView.SCROLL_STATE_SETTLING:
+                System.out.println("Scroll Settling");
+                break;
+
+        }
+
+    }
+
+
+    @Override
+        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+            //On Scroll, agenda is refresh to update background colors
 //            post(selectedItemRefresher);
 //
-//            if (calendarListener != null) {
-//                calendarListener.onCalendarScroll(calendarView, dx, dy);
-//            }
-//        }
-//
+//            visibleItemCount = recyclerView.getChildCount();
+//            totalItemCount = calendarView.getLayoutManager().getItemCount();
+//            firstVisibleItem = calendarView.getLayoutManager().findFirstVisibleItemPosition();
+            //Todo: Change the code so that onScrolled executed once
+            if(!executed && dx > 0){
+                executed = true;
+                Log.d("X: " ,String.valueOf(dx));
+                Log.d("XPos: " ,String.valueOf(lastSelectedPosition));
+                scrollToNextPreviousWeekdayPosition(lastSelectedPosition+7);
+            }else if(!executed && dx < 0){
+                    executed = true;
+                    Log.d("-X: " ,String.valueOf(dx));
+                    Log.d("XPos: " ,String.valueOf(lastSelectedPosition));
+                    scrollToNextPreviousWeekdayPosition(lastSelectedPosition-7);
+            }
+
+
+            tempCount++;
+            Log.d("Count",String.valueOf(tempCount));
+            Log.d("Excecute",String.valueOf(executed));
+        }
+
+
 //        private class SelectedItemRefresher implements Runnable {
 //
 //            SelectedItemRefresher() {
 //            }
-//
+
+
 //            @Override
 //            public void run() {
 //                final int positionOfCenterItem = calendarView.getPositionOfCenterItem();
@@ -692,5 +870,5 @@ public final class HorizontalCalendar {
 //                }
 //            }
 //        }
-//    }
+    }
 }
