@@ -77,7 +77,7 @@ horizontalCalendar.setCalendarListener(new HorizontalCalendarListener() {
         });
 ```
 
-- You can also listen to **scroll** , **long press** and **click** events by overriding each perspective method within **HorizontalCalendarListener**:
+- You can also listen to **scroll** , **long press** and **click** events by overriding each respective method within **HorizontalCalendarListener**:
 
 ```java
 horizontalCalendar.setCalendarListener(new HorizontalCalendarListener() {
@@ -147,9 +147,9 @@ builder.configure()
            .sizeTopText(float size)
            .sizeMiddleText(float size)
            .sizeBottomText(float size)
-           .colorTextTop(int normalColor, int selectedColor)
-           .colorTextMiddle(int normalColor, int selectedColor)
-           .colorTextBottom(int normalColor, int selectedColor)
+           .colorTextTop(int normalColor, int selectedColor, int todayColor)
+           .colorTextMiddle(int normalColor, int selectedColor, int todayColor)
+           .colorTextBottom(int normalColor, int selectedColor, int todayColor)
        .end()
 ```
 
@@ -206,7 +206,7 @@ builder.disableDates(new HorizontalCalendarPredicate() {
                        })
 ```
 
-All the methods are implemented in **HorizontalCalendarListener**:
+All the methods are implemented in **HorizontalCalendarListener.java**:
 
 - Select a specific **Date** programmatically with the option whether to play the animation or not:
 ```java
