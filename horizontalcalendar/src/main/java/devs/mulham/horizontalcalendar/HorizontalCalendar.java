@@ -133,10 +133,9 @@ public final class HorizontalCalendar {
     /**
      * Select today date and center the Horizontal Calendar to this date
      *
-     * @param immediate pass true to make the calendar scroll as fast as possible to reach the date of today
      *
      */
-    public void goToday(boolean immediate) {
+    public void goToday() {
         scrollToTodayPositionWithNoAnimation(positionOfToday);
     }
 
