@@ -34,7 +34,7 @@ public class HorizontalSnapHelper extends LinearSnapHelper {
                 selectedItemPosition = layoutManager.getPosition(snapView);
             }
 
-            notifyCalendarListener(selectedItemPosition);
+//            notifyCalendarListener(selectedItemPosition);
         }
 
         return snapView;
