@@ -1,23 +1,17 @@
-# Horizontal Calendar
-
-[![Download](https://api.bintray.com/packages/mulham-raee/maven/horizontal-calendar/images/download.svg) ](https://bintray.com/mulham-raee/maven/horizontal-calendar/_latestVersion)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+# Kaodim Horizontal Calendar
 
 A material horizontal calendar view for Android based on `RecyclerView`.
 
-![demo](/art/demo.gif)
+![demo](/art/WeekNavigation.gif)
 
 ## Installation
 
-The library is hosted on jcenter, add this to your **build.gradle**:
+Add the library to your **build.gradle**:
 
 ```gradle
-repositories {
-      jcenter()
-    }
-    
+
 dependencies {
-      compile 'devs.mulham.horizontalcalendar:horizontalcalendar:1.3.0'
+      compile 'compile 'com.github.kaodim:Horizontal-Calendar:1.3.1'
     }
 ```
 
@@ -44,15 +38,16 @@ The minimum API level supported by this library is **API 14 (ICE_CREAM_SANDWICH)
 ```
 
 - In your Activity or Fragment, define your **start** and **end** dates to set the range of the calendar:
+- Kaodim Horizontal Calendar by default has 24 months before and after current date
 
 ```java
 /* end after 1 month from now */
 Calendar endDate = Calendar.getInstance();
-endDate.add(Calendar.MONTH, 1);
+endDate.add(Calendar.MONTH, 24);
 
 /* start before 1 month from now */
 Calendar startDate = Calendar.getInstance();
-startDate.add(Calendar.MONTH, -1);
+startDate.add(Calendar.MONTH, -24);
 ```
 
 - Then setup `HorizontalCalendar` in your **Activity** through its Builder: 
@@ -82,12 +77,17 @@ horizontalCalendar.setCalendarListener(new HorizontalCalendarListener() {
         });
 ```
 
-- You can also listen to **scroll** and **long press** events by overriding each perspective method within **HorizontalCalendarListener**:
+- You can also listen to **scroll** , **long press** and **click** events by overriding each perspective method within **HorizontalCalendarListener**:
 
 ```java
 horizontalCalendar.setCalendarListener(new HorizontalCalendarListener() {
             @Override
             public void onDateSelected(Calendar date, int position) {
+
+            }
+
+	    @Override
+            public void onDateClicked(Calendar date, int position) {
 
             }
 
@@ -206,43 +206,33 @@ builder.disableDates(new HorizontalCalendarPredicate() {
                        })
 ```
 
+All the methods are implemented in **HorizontalCalendarListener**:
+
 - Select a specific **Date** programmatically with the option whether to play the animation or not:
 ```java
 horizontalCalendar.selectDate(Calendar date, boolean immediate); // set immediate to false to ignore animation.
-	// or simply
-horizontalCalendar.goToday(boolean immediate);
 ```
 
+- Scroll to today:
+```
+horizontalCalendar.goToday();
+```
+
+- Scroll to next day by giving current date as input:
+```
+horizontalCalendar.goNextDay(Calendar currentDate);
+```
+
+- Scroll to previous day by giving current date as input:
+```
+horizontalCalendar.goPreviousDay(Calendar currentDate);
+```
 - Check if a date is contained in the Calendar:
 ```java
 horizontalCalendar.contains(Calendar date);
-```
-
-- Check if two dates are equal (year, month, day of month):
-```java
-Utils.isSameDate(Calendar date1, Calendar date2);
 ```
 
 - Get number of **days** between two dates:
 ```java
 Utils.daysBetween(Calendar startInclusive, Calendar endExclusive);
 ```
-
-## Contributing
-
-Contributions are welcome, feel free to submit a pull request.
-
-## License
-
-> Copyright 2017  Mulham Raee
-> 
-> Licensed under the Apache License, Version 2.0 (the "License");
-> you may not use this file except in compliance with the License.
-> You may obtain a copy of the License at
-       http://www.apache.org/licenses/LICENSE-2.0
-
-> Unless required by applicable law or agreed to in writing, software
-> distributed under the License is distributed on an "AS IS" BASIS,
-> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-> See the [License](/LICENSE) for the specific language governing
-> permissions and limitations under the License.
