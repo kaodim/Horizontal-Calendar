@@ -11,7 +11,7 @@ Add the library to your **build.gradle**:
 ```gradle
 
 dependencies {
-      compile 'compile 'com.github.kaodim:Horizontal-Calendar:1.3.1'
+      compile 'compile 'com.github.kaodim:Horizontal-Calendar:1.3.2'
     }
 ```
 
