@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 
 import devs.mulham.horizontalcalendar.adapter.HorizontalCalendarBaseAdapter;
@@ -83,9 +84,26 @@ public class HorizontalCalendarView extends RecyclerView {
         return TypedValue.complexToFloat(outValue.data);
     }
 
+//    @Override
+//    public boolean fling(int velocityX, int velocityY) {
+//        velocityX *= FLING_SCALE_DOWN_FACTOR; // (between 0 for no fling, and 1 for normal fling, or more for faster fling).
+//
+//        return super.fling(velocityX, velocityY);
+//    }
+
+    // Change the method to limit the scrolling spped when swiped
     @Override
     public boolean fling(int velocityX, int velocityY) {
-        velocityX *= FLING_SCALE_DOWN_FACTOR; // (between 0 for no fling, and 1 for normal fling, or more for faster fling).
+//        velocityX *= FLING_SCALE_DOWN_FACTOR; // (between 0 for no fling, and 1 for normal fling, or more for faster fling).
+
+        if(velocityX > 100){
+            velocityX = 750;
+        }else if (velocityX < -100)
+            velocityX = -750;
+        else
+            velocityX = 0;
+
+        Log.d("FLING", String.valueOf(velocityX));
 
         return super.fling(velocityX, velocityY);
     }

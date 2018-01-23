@@ -46,12 +46,17 @@ public final class HorizontalCalendar {
     public int positionOfToday;
     private int tempCount = 0;
 
-    private boolean executed = false;
+    private boolean swipe = false;
+    private boolean isDragRight, isDragLeft;
 
     public String weekDay;
 
     //store position of last selected adapter position
     private int lastSelectedPosition;
+
+    //store position of last selected adapter position
+    private int longClickedPosition;
+
 
     //Interface events
     HorizontalCalendarListener calendarListener;
@@ -85,8 +90,13 @@ public final class HorizontalCalendar {
         calendarView.setHorizontalScrollBarEnabled(false);
 
 
+        //set snaphelper to null to disable dragging
 //        HorizontalSnapHelper snapHelper = new HorizontalSnapHelper();
 //        snapHelper.attachToHorizontalCalendar(this);
+
+//        SnapHelper snapHelperTop = new GravitySnapHelper(Gravity.START);
+//        snapHelperTop.attachToRecyclerView(calendarView);
+
 
         if (disablePredicate == null) {
             disablePredicate = defaultDisablePredicate;
@@ -97,8 +107,8 @@ public final class HorizontalCalendar {
         mCalendarAdapter = new DaysAdapter(this, startDate, endDate, disablePredicate);
         calendarView.setAdapter(mCalendarAdapter);
         calendarView.setLayoutManager(new HorizontalLayoutManager(calendarView.getContext(), false));
-//        calendarView.getLayoutManager().setScrollEnabled(false);
-//        calendarView.getLayoutManager().canScrollHorizontally();
+        calendarView.getLayoutManager().setScrollEnabled(true);
+        calendarView.getLayoutManager().canScrollHorizontally();
 
         //uncomment for listen to scroll event
         calendarView.addOnScrollListener(new HorizontalCalendarScrollListener());
@@ -106,6 +116,8 @@ public final class HorizontalCalendar {
 
         SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
         weekDay = dayFormat.format(defaultSelectedDate.getTime());
+
+        longClickedPosition = -1;
         Log.d("Today: ","" + weekDay);
 
         post(new Runnable() {
@@ -158,6 +170,18 @@ public final class HorizontalCalendar {
             calendarView.setSmoothScrollSpeed(HorizontalLayoutManager.SPEED_NORMAL);
             centerCalendarToPosition(datePosition);
         }
+    }
+
+
+    /**
+     * Set the long clicked position to be able to use when determine the position during
+     * drag listener
+     *
+     * @param position date to select
+     *
+     */
+    public void setLongClickedPosition(int position) {
+        longClickedPosition = position;
     }
 
 
@@ -401,6 +425,89 @@ public final class HorizontalCalendar {
             }
         }
     }
+
+
+    /**
+     * Set to current weekday when fling/drag is slow
+     *
+     * @param position The position of last selected position
+     */
+    public void scrollToWeekPosition(final int position) {
+        if (position != -1) {
+            if(lastSelectedPosition != -1){
+                String date = DateFormat.format("EEEE - d MMM yyyy", getDateAt(position)).toString();
+
+                //call onDateSelected listener to update view
+//                if (calendarListener != null) {
+//                    calendarListener.onDateSelected(getDateAt(position), position);
+//                }
+
+                int relativePosition = position;
+
+                    if (position >= calendarView.getPositionOfCenterItem()) {
+                        if (isDragRight){
+                            relativePosition = position + getShiftCellsForWeekDay(position)-6;
+                            Log.d("DateScroll: ", " right1");
+                        }else if(isDragLeft){
+                            relativePosition = position + getShiftCellsForWeekDay(position);
+
+                            Log.d("DateScroll: ", " left1");
+                        }
+                    }else if(position <= calendarView.getPositionOfCenterItem()){
+                        if (isDragRight){
+                            relativePosition = position + getShiftCellsForWeekDay(position)-6;
+                            Log.d("DateScroll: ", " right2");
+                        }else if(isDragLeft){
+                            relativePosition = position + getShiftCellsForWeekDay(position);
+
+                            Log.d("DateScroll: ", " left2");
+                        }
+                    }
+
+//                    //when scroll to leftDirection on weekly bar
+//                    if(isDragRight) {
+//                        if (position > calendarView.getPositionOfCenterItem()) {
+//                            relativePosition = position + getShiftCellsForWeekDay(position);
+//                            Log.d("DateScroll: ", " right1");
+//                            //when scroll to rightDirection on weekly bar
+//                        } else if (position < calendarView.getPositionOfCenterItem()) {
+//                            Log.d("DateScroll: ", " right2");
+////                            // -6 as cell position start with 0
+//                            relativePosition = position + getShiftCellsForWeekDay(position) - 6;
+//                        }
+//                    }else if (isDragLeft){
+//                        if (position > calendarView.getPositionOfCenterItem()) {
+//                            relativePosition = position + getShiftCellsForWeekDay(position);
+//
+//                            Log.d("DateScroll: ", " left1");
+//                            //when scroll to rightDirection on weekly bar
+//                        } else if (position < calendarView.getPositionOfCenterItem()) {
+//                            Log.d("DateScroll: ", " left2");
+//                            // -6 as cell position start with 0
+//                            relativePosition = position + getShiftCellsForWeekDay(position);
+//                        }
+//                    }
+
+
+                Log.d("CenterPosition", String.valueOf(calendarView.getPositionOfCenterItem()));
+
+                //update day adapter layout in weekbar
+                final int oldSelectedItem = lastSelectedPosition;
+                calendarView.scrollToPosition(relativePosition);
+                calendarView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final int newSelectedItem = position;
+                        //refresh to update background colors
+                        refreshItemsSelector(newSelectedItem, oldSelectedItem);
+                        lastSelectedPosition = position;
+
+                    }
+                });
+            }
+        }
+    }
+
 
 
     /**
@@ -783,7 +890,7 @@ public final class HorizontalCalendar {
     private class HorizontalCalendarScrollListener extends RecyclerView.OnScrollListener {
 
         int lastSelectedItem = lastSelectedPosition;
-        boolean rightDirection, leftDirection;
+        boolean rightDirection, leftDirection,drag;
         int firstVisibleItem, visibleItemCount, totalItemCount;
 
 //        final Runnable selectedItemRefresher = new SelectedItemRefresher();
@@ -799,18 +906,22 @@ public final class HorizontalCalendar {
     public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
         switch (newState) {
             case RecyclerView.SCROLL_STATE_IDLE:
-                if(rightDirection){
-                    executed = false;
+                if(swipe && rightDirection){
+                    swipe = false;
                     scrollToNextPreviousWeekdayPosition(lastSelectedPosition + 7);
                 }
-                else if (leftDirection){
-                    executed = false;
+                else if (swipe && leftDirection){
+                    swipe = false;
                     scrollToNextPreviousWeekdayPosition(lastSelectedPosition - 7);
+                }else if(drag) {
+                    drag = false;
+                    scrollToWeekPosition(lastSelectedPosition);
+//                    System.out.println("left" + leftDirection);
+//                    System.out.println("right" + rightDirection);
                 }
                 System.out.println("The RecyclerView is not scrolling");
                 break;
             case RecyclerView.SCROLL_STATE_DRAGGING:
-
                 System.out.println("Scrolling now");
                 break;
             case RecyclerView.SCROLL_STATE_SETTLING:
@@ -831,28 +942,34 @@ public final class HorizontalCalendar {
             //On Scroll, agenda is refresh to update background colors
 //            post(selectedItemRefresher);
         Log.d("X: " ,String.valueOf(dx));
-            //variable executed is set to true, hence execution happens only once
-            if(!executed && dx > 0){
-                executed = true;
+            //variable swipe is set to true, hence execution happens only once
+            if(!swipe && dx > 15){
+                swipe = true;
                 rightDirection = true;
                 leftDirection = false;
-//                Log.d("X: " ,String.valueOf(dx));
-//                Log.d("XPos: " ,String.valueOf(lastSelectedPosition));
-//                String date = DateFormat.format("EEEE - d MMM yyyy", getDateAt(lastSelectedPosition)).toString();
-//                Log.d("Date Before: " ,date);
-//                scrollToNextPreviousWeekdayPosition(lastSelectedPosition + 7);
-            }else if(!executed && dx < 0){
-                executed = true;
+                System.out.println("swipe right");
+//
+            }else if(!swipe && dx < -15){
+                swipe = true;
                 rightDirection = false;
                 leftDirection = true;
-//                Log.d("-X: " ,String.valueOf(dx));
-//                Log.d("XPos: " ,String.valueOf(lastSelectedPosition));
-//                Log.d("Date Before: " ,getDateAt(lastSelectedPosition).toString());
-//                scrollToNextPreviousWeekdayPosition(lastSelectedPosition - 7);
-            }else{
-//                executed = false;
-//                rightDirection = false;
-//                leftDirection = false;
+                System.out.println("swipe left");
+
+            }
+            else if(!drag && (dx > -15 && dx < 0)){
+                drag = true;
+                isDragRight = false;
+                isDragLeft = true;
+                System.out.println("drag left");
+            }
+            else if(!drag && (dx < 15 && dx > 0)){
+            drag = true;
+            isDragRight = true;
+            isDragLeft = false;
+            System.out.println("drag right");
+            }
+            else{
+
             }
 
         }
