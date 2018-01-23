@@ -11,7 +11,7 @@ Add the library to your **build.gradle**:
 ```gradle
 
 dependencies {
-      compile 'compile 'com.github.kaodim:Horizontal-Calendar:1.3.2'
+      compile 'compile 'com.github.kaodim:Horizontal-Calendar:1.3.3'
     }
 ```
 
@@ -206,7 +206,7 @@ builder.disableDates(new HorizontalCalendarPredicate() {
                        })
 ```
 
-All the methods are implemented in **HorizontalCalendarListener.java**:
+All the methods are implemented in **HorizontalCalendar.java**:
 
 - Select a specific **Date** programmatically with the option whether to play the animation or not:
 ```java
