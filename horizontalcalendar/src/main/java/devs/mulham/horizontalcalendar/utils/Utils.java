@@ -2,6 +2,7 @@ package devs.mulham.horizontalcalendar.utils;
 
 import android.content.Context;
 import android.graphics.Point;
+import android.util.Log;
 import android.view.Display;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -66,6 +67,8 @@ public final class Utils {
         zeroTime(endExclusive);
 
         long diff = endExclusive.getTimeInMillis() - startInclusive.getTimeInMillis(); //result in millis
+        Log.d("DaysBetween", String.valueOf(diff));
+        Log.d("DaysBetween", String.valueOf(TimeUnit.DAYS.toDays(diff)));
         return (int) TimeUnit.MILLISECONDS.toDays(diff);
     }
 
@@ -73,5 +76,6 @@ public final class Utils {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
     }
 }

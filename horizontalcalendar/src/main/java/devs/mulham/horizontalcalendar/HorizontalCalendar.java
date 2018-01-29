@@ -84,7 +84,7 @@ public final class HorizontalCalendar {
     }
 
     /* Init Calendar View */
-    void init(View rootView, final Calendar defaultSelectedDate, HorizontalCalendarPredicate disablePredicate) {
+    void init(View rootView, final Calendar defaultSelectedDate ,final Calendar todayDate, HorizontalCalendarPredicate disablePredicate) {
         calendarView = rootView.findViewById(calendarId);
         calendarView.setHasFixedSize(true);
         calendarView.setHorizontalScrollBarEnabled(false);
@@ -115,19 +115,31 @@ public final class HorizontalCalendar {
 
 
         SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
-        weekDay = dayFormat.format(defaultSelectedDate.getTime());
+        weekDay = dayFormat.format(todayDate.getTime());
 
-        longClickedPosition = -1;
+//        longClickedPosition = -1;
         Log.d("Today: ","" + weekDay);
 
-        post(new Runnable() {
-            @Override
-            public void run() {
-                positionOfToday = positionOfDate(defaultSelectedDate);
-                lastSelectedPosition = positionOfToday;
-                weekDayNoAnimation(positionOfDateNoshift(defaultSelectedDate));
-            }
-        });
+        positionOfToday = positionOfDate(todayDate);
+        lastSelectedPosition = positionOfToday;
+
+        //if selected date from month view not null
+        if(defaultSelectedDate != null){
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    scrollToDatePositionWithNoAnimation(positionOfDate(defaultSelectedDate));
+                }
+            });
+        }else{
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    weekDayNoAnimation(positionOfTodayDateNoshift(todayDate));
+                }
+            });
+        }
+
 
         calendarView.applyConfigFromLayout(this);
 
@@ -337,12 +349,57 @@ public final class HorizontalCalendar {
         }
     }
 
+
     /**
      * Scroll Horizontal Calendar to today position and select today date.
      *
      * @param position The position to center the calendar to!
      */
     public void scrollToTodayPositionWithNoAnimation(final int position) {
+        if (position != -1) {
+            if(lastSelectedPosition != -1){
+                Log.d("lastselected","not -1");
+
+
+                //call onDateSelected listener to update view
+                if (calendarListener != null) {
+                    calendarListener.onDateSelected(getDateAt(position), position);
+                }
+
+                int relativePosition = position;
+
+                //when scroll to leftDirection on weekly bar
+                if(position > calendarView.getPositionOfCenterItem())
+                    relativePosition = position + getShiftCellsTodayWeekDay();
+                    //when scroll to rightDirection on weekly bar
+                else if(position < calendarView.getPositionOfCenterItem())
+                    // -6 as cell position start with 0 from rightDirection
+                    relativePosition = position + getShiftCellsTodayWeekDay() - 6;
+
+
+                //update day adapter layout in weekbar
+                final int oldSelectedItem = lastSelectedPosition;
+//                calendarView.setSmoothScrollSpeed(HorizontalLayoutManager.SPEED_NORMAL);
+                calendarView.scrollToPosition(relativePosition);
+                calendarView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final int newSelectedItem = position;
+                        //refresh to update background colors
+                        refreshItemsSelector(newSelectedItem, oldSelectedItem);
+                        lastSelectedPosition = position;
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Scroll Horizontal Calendar to today position and select today date.
+     *
+     * @param position The position to center the calendar to!
+     */
+    public void scrollToDatePositionWithNoAnimation(final int position) {
         if (position != -1) {
             if(lastSelectedPosition != -1){
 
@@ -355,12 +412,14 @@ public final class HorizontalCalendar {
                 int relativePosition = position;
 
                 //when scroll to leftDirection on weekly bar
-                if(position > calendarView.getPositionOfCenterItem())
-                    relativePosition = position + getShiftCellsTodayWeekDay();
+                //when scroll to leftDirection on weekly bar
+                if(position > calendarView.getPositionOfCenterItem()) {
+                    relativePosition = position + getShiftCellsForWeekDay(position);
                     //when scroll to rightDirection on weekly bar
-                else if(position < calendarView.getPositionOfCenterItem())
-                    // -6 as cell position start with 0 from rightDirection
-                    relativePosition = position + getShiftCellsTodayWeekDay() - 6;
+                }else if(position < calendarView.getPositionOfCenterItem()) {
+                    // -6 as cell position start with 0
+                    relativePosition = position + getShiftCellsForWeekDay(position) - 6;
+                }
 
 
                 //update day adapter layout in weekbar
@@ -437,10 +496,10 @@ public final class HorizontalCalendar {
             if(lastSelectedPosition != -1){
                 String date = DateFormat.format("EEEE - d MMM yyyy", getDateAt(position)).toString();
 
-                //call onDateSelected listener to update view
-//                if (calendarListener != null) {
-//                    calendarListener.onDateSelected(getDateAt(position), position);
-//                }
+//                call onDateSelected listener to update view
+                if (calendarListener != null) {
+                    calendarListener.onDateSelected(getDateAt(position), position);
+                }
 
                 int relativePosition = position;
 
@@ -756,7 +815,7 @@ public final class HorizontalCalendar {
     /**
      * @return position of date in Calendar, or -1 if date does not exist
      */
-    public int positionOfDateNoshift(Calendar date) {
+    public int positionOfTodayDateNoshift(Calendar date) {
         if (date.before(startDate) || date.after(endDate)) {
             return -1;
         }
@@ -765,10 +824,34 @@ public final class HorizontalCalendar {
         if (Utils.isSameDate(date, startDate)) {
             position = 0;
         } else {
+
             position = Utils.daysBetween(startDate, date);
+            Log.d("positionOfDate","" + String.valueOf(position));
         }
 
         final int shiftCells = getShiftCellsTodayWeekDay();
+        return position + shiftCells;
+    }
+
+
+    /**
+     * @return position of date in Calendar, or -1 if date does not exist
+     */
+    public int positionOfDateNoShift(Calendar date) {
+        if (date.before(startDate) || date.after(endDate)) {
+            return -1;
+        }
+
+        int position;
+        if (Utils.isSameDate(date, startDate)) {
+            position = 0;
+        } else {
+
+            position = Utils.daysBetween(startDate, date);
+            Log.d("positionOfDate","" + String.valueOf(position));
+        }
+
+        final int shiftCells = getShiftCellsForWeekDay(position);
         return position + shiftCells;
     }
 
@@ -781,6 +864,7 @@ public final class HorizontalCalendar {
         Calendar startDate;
         Calendar endDate;
         Calendar defaultSelectedDate;
+        Calendar todayDate;
 
         // Number of Days to Show on Screen
         int numberOfDatesOnScreen;
@@ -823,6 +907,11 @@ public final class HorizontalCalendar {
             return this;
         }
 
+        public Builder todayDate(Calendar date) {
+           todayDate = date;
+            return this;
+        }
+
         public Builder disableDates(HorizontalCalendarPredicate predicate) {
             disablePredicate = predicate;
             return this;
@@ -844,8 +933,8 @@ public final class HorizontalCalendar {
             if (numberOfDatesOnScreen <= 0) {
                 numberOfDatesOnScreen = 5;
             }
-            if (defaultSelectedDate == null) {
-                defaultSelectedDate = Calendar.getInstance();
+            if (todayDate == null) {
+                todayDate = Calendar.getInstance();
             }
         }
 
@@ -865,7 +954,7 @@ public final class HorizontalCalendar {
             HorizontalCalendarConfig config = configBuilder.createConfig();
 
             HorizontalCalendar horizontalCalendar = new HorizontalCalendar(this, config, defaultStyle, selectedItemStyle,todayItemStyle);
-            horizontalCalendar.init(rootView, defaultSelectedDate, disablePredicate);
+            horizontalCalendar.init(rootView, defaultSelectedDate, todayDate,disablePredicate);
             return horizontalCalendar;
         }
     }

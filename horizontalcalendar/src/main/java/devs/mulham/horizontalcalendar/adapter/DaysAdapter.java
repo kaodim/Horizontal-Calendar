@@ -1,6 +1,7 @@
 package devs.mulham.horizontalcalendar.adapter;
 
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
@@ -112,6 +113,7 @@ public class DaysAdapter extends HorizontalCalendarBaseAdapter<DateViewHolder, C
 
     private int calculateItemsCount(Calendar endDate) {
         int days = Utils.daysBetween(startDate, endDate) + 1;
+        Log.d("calculateItemCount","" +String.valueOf(days));
         return days + (horizontalCalendar.getShiftCellsCenter() * 2);
     }
 }
